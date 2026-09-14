@@ -1,0 +1,6 @@
+{
+  "name": "Nudge",
+  "description": "A gentle, modern self-care and everyday life organization assistant for routines, checklists, backpacks, schedules, and overcoming procrastination.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

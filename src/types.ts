@@ -30,6 +30,7 @@ export interface UserSettings {
   soundEnabled?: boolean;
   hapticsEnabled?: boolean;
   defaultCountdownDuration?: number;
+  hasSelectedCountdownDuration?: boolean;
   // Journal Reminders
   journalReminderEnabled?: boolean;
   journalReminderTimeSlot?: 'morning' | 'evening' | 'custom';

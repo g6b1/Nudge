@@ -17,6 +17,7 @@ const STORAGE_KEYS = {
   COMPLETION_HISTORY: 'nudge_completion_history',
   STREAK: 'nudge_streak',
   JOURNAL: 'nudge_journal_entries',
+  TUTORIAL_COMPLETED: 'nudge_tutorial_completed',
 };
 
 export const formatDateLocal = (d: Date): string => {
@@ -40,7 +41,19 @@ export const storage = {
   loadSettings: (): UserSettings => {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return data ? { ...DEFAULT_USER_SETTINGS, ...JSON.parse(data) } : DEFAULT_USER_SETTINGS;
+      if (!data) return DEFAULT_USER_SETTINGS;
+      const parsed = JSON.parse(data);
+      const isExplicitlyChosen = parsed.hasSelectedCountdownDuration;
+      // If user had the old default of 5 and never explicitly chose it, migrate to new default of 10
+      const duration = isExplicitlyChosen 
+        ? (parsed.countdownDuration ?? parsed.defaultCountdownDuration ?? 10)
+        : (parsed.countdownDuration === 5 ? 10 : (parsed.countdownDuration ?? 10));
+      return { 
+        ...DEFAULT_USER_SETTINGS, 
+        ...parsed,
+        countdownDuration: duration,
+        defaultCountdownDuration: duration,
+      };
     } catch {
       return DEFAULT_USER_SETTINGS;
     }
@@ -299,6 +312,41 @@ export const storage = {
       return true;
     } catch {
       return false;
+    }
+  },
+
+  // Tutorial state
+  isTutorialCompleted: (): boolean => {
+    try {
+      const val = localStorage.getItem(STORAGE_KEYS.TUTORIAL_COMPLETED);
+      if (val !== null) {
+        return val === 'true';
+      }
+      // If user already has any existing app data saved (settings, routines, checklists, etc.),
+      // treat them as an existing user so we do not force them through the tutorial unexpectedly.
+      const hasExistingData = 
+        localStorage.getItem(STORAGE_KEYS.SETTINGS) !== null ||
+        localStorage.getItem(STORAGE_KEYS.ROUTINES) !== null ||
+        localStorage.getItem(STORAGE_KEYS.CALENDAR) !== null ||
+        localStorage.getItem(STORAGE_KEYS.JOURNAL) !== null;
+
+      if (hasExistingData) {
+        // Mark as completed for existing users so they never see it
+        localStorage.setItem(STORAGE_KEYS.TUTORIAL_COMPLETED, 'true');
+        return true;
+      }
+
+      return false;
+    } catch {
+      return true; // Fallback safely if localStorage is restricted
+    }
+  },
+
+  markTutorialCompleted: () => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.TUTORIAL_COMPLETED, 'true');
+    } catch {
+      // ignore
     }
   },
 

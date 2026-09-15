@@ -247,23 +247,31 @@ export const SettingsView: React.FC = () => {
               Seconds to count down when launching a task
             </p>
             <div className="flex items-center gap-2 pt-1">
-              {[3, 5, 10].map(secs => (
-                <button
-                  key={secs}
-                  type="button"
-                  onClick={() => updateSettings({ defaultCountdownDuration: secs })}
-                  className={`px-3 py-1 rounded-xl text-xs font-semibold border transition-all ${
-                    settings.defaultCountdownDuration === secs ? 'ring-2' : ''
-                  }`}
-                  style={{
-                    backgroundColor: settings.defaultCountdownDuration === secs ? themeConfig.accentSubtle : themeConfig.bgCard,
-                    borderColor: themeConfig.border,
-                    color: settings.defaultCountdownDuration === secs ? themeConfig.accentText : themeConfig.textSecondary,
-                  }}
-                >
-                  {secs} Seconds
-                </button>
-              ))}
+              {[3, 5, 10].map(secs => {
+                const currentDuration = settings.countdownDuration ?? settings.defaultCountdownDuration ?? 10;
+                const isSelected = currentDuration === secs;
+                return (
+                  <button
+                    key={secs}
+                    type="button"
+                    onClick={() => updateSettings({ 
+                      countdownDuration: secs, 
+                      defaultCountdownDuration: secs,
+                      hasSelectedCountdownDuration: true,
+                    })}
+                    className={`px-3 py-1 rounded-xl text-xs font-semibold border transition-all ${
+                      isSelected ? 'ring-2' : ''
+                    }`}
+                    style={{
+                      backgroundColor: isSelected ? themeConfig.accentSubtle : themeConfig.bgCard,
+                      borderColor: themeConfig.border,
+                      color: isSelected ? themeConfig.accentText : themeConfig.textSecondary,
+                    }}
+                  >
+                    {secs} Seconds
+                  </button>
+                );
+              })}
             </div>
           </div>
 

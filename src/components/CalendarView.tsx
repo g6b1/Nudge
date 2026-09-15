@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { CalendarEvent } from '../types';
-import { getTodayDateString } from '../utils/storage';
+import { getTodayDateString, formatDateLocal } from '../utils/storage';
 
 export const CalendarView: React.FC = () => {
   const { 
@@ -31,23 +31,50 @@ export const CalendarView: React.FC = () => {
   // Navigation handlers
   const handlePrev = () => {
     const next = new Date(currentDate);
-    if (viewMode === 'month') next.setMonth(next.getMonth() - 1);
-    else if (viewMode === 'week') next.setDate(next.getDate() - 7);
-    else next.setDate(next.getDate() - 1);
+    if (viewMode === 'month') {
+      next.setMonth(next.getMonth() - 1);
+    } else if (viewMode === 'week') {
+      next.setDate(next.getDate() - 7);
+      const sel = new Date(selectedDateStr + 'T00:00:00');
+      sel.setDate(sel.getDate() - 7);
+      setSelectedDateStr(formatDateLocal(sel));
+    } else {
+      next.setDate(next.getDate() - 1);
+      setSelectedDateStr(formatDateLocal(next));
+    }
     setCurrentDate(next);
   };
 
   const handleNext = () => {
     const next = new Date(currentDate);
-    if (viewMode === 'month') next.setMonth(next.getMonth() + 1);
-    else if (viewMode === 'week') next.setDate(next.getDate() + 7);
-    else next.setDate(next.getDate() + 1);
+    if (viewMode === 'month') {
+      next.setMonth(next.getMonth() + 1);
+    } else if (viewMode === 'week') {
+      next.setDate(next.getDate() + 7);
+      const sel = new Date(selectedDateStr + 'T00:00:00');
+      sel.setDate(sel.getDate() + 7);
+      setSelectedDateStr(formatDateLocal(sel));
+    } else {
+      next.setDate(next.getDate() + 1);
+      setSelectedDateStr(formatDateLocal(next));
+    }
     setCurrentDate(next);
   };
 
   const handleToday = () => {
-    setCurrentDate(new Date());
+    const now = new Date();
+    setCurrentDate(now);
     setSelectedDateStr(todayStr);
+  };
+
+  const handleViewModeChange = (mode: 'month' | 'week' | 'day') => {
+    setViewMode(mode);
+    if (selectedDateStr) {
+      const parts = selectedDateStr.split('-').map(Number);
+      if (parts.length === 3) {
+        setCurrentDate(new Date(parts[0], parts[1] - 1, parts[2]));
+      }
+    }
   };
 
   // Month grid calculations
@@ -65,6 +92,21 @@ export const CalendarView: React.FC = () => {
   for (let i = 1; i <= daysInMonth; i++) {
     daysArray.push(i);
   }
+
+  // Week calculations
+  const dayOfWeek = currentDate.getDay(); // 0 is Sunday
+  const weekStart = new Date(currentDate);
+  weekStart.setDate(currentDate.getDate() - dayOfWeek);
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(weekStart.getDate() + i);
+    return d;
+  });
+  const weekEnd = weekDays[6];
+  const weekTitle = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+
+  // Day calculations
+  const dayTitle = currentDate.toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' });
 
   const handleSaveNewEvent = (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +188,7 @@ export const CalendarView: React.FC = () => {
       >
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-bold tracking-tight" style={{ color: themeConfig.textPrimary }}>
-            {monthName}
+            {viewMode === 'month' ? monthName : viewMode === 'week' ? weekTitle : dayTitle}
           </h2>
 
           <div className="flex items-center gap-1">
@@ -181,9 +223,10 @@ export const CalendarView: React.FC = () => {
           {(['month', 'week', 'day'] as const).map(mode => (
             <button
               key={mode}
-              onClick={() => setViewMode(mode)}
+              id={`calendar-view-${mode}-btn`}
+              onClick={() => handleViewModeChange(mode)}
               className={`px-3 py-1 rounded-xl capitalize transition-all cursor-pointer ${
-                viewMode === mode ? 'shadow-xs font-bold text-white' : 'hover:bg-black/5'
+                viewMode === mode ? 'shadow-xs font-bold text-white' : 'hover:bg-black/5 dark:hover:bg-white/5'
               }`}
               style={{
                 backgroundColor: viewMode === mode ? themeConfig.accent : 'transparent',
@@ -198,114 +241,454 @@ export const CalendarView: React.FC = () => {
 
       {/* Main Calendar Layout: Grid on left/top, Selected Day Detail on right/bottom */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0">
-        {/* Month / Week Grid (spans 2 columns) */}
+        {/* Month / Week / Day Container (spans 2 columns) */}
         <div 
           className="lg:col-span-2 p-3 sm:p-6 rounded-3xl border shadow-xs min-w-0 overflow-hidden"
           style={{ backgroundColor: themeConfig.bgCard, borderColor: themeConfig.border }}
         >
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 text-center font-bold text-[11px] sm:text-xs uppercase mb-3 min-w-0" style={{ color: themeConfig.textMuted }}>
-            <span>Sun</span>
-            <span>Mon</span>
-            <span>Tue</span>
-            <span>Wed</span>
-            <span>Thu</span>
-            <span>Fri</span>
-            <span>Sat</span>
-          </div>
+          {viewMode === 'month' && (
+            <>
+              {/* Weekday headers */}
+              <div className="grid grid-cols-7 gap-1 text-center font-bold text-[11px] sm:text-xs uppercase mb-3 min-w-0" style={{ color: themeConfig.textMuted }}>
+                <span>Sun</span>
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+              </div>
 
-          {/* Days Grid */}
-          <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-0">
-            {daysArray.map((dayNum, idx) => {
-              if (dayNum === null) {
-                return <div key={`empty-${idx}`} className="h-20 sm:h-24 rounded-2xl opacity-20 min-w-0" />;
-              }
+              {/* Days Grid */}
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-0">
+                {daysArray.map((dayNum, idx) => {
+                  if (dayNum === null) {
+                    return <div key={`empty-${idx}`} className="h-20 sm:h-24 rounded-2xl opacity-20 min-w-0" />;
+                  }
 
-              const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-              const isSelected = dateStr === selectedDateStr;
-              const isToday = dateStr === todayStr;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const isSelected = dateStr === selectedDateStr;
+                  const isToday = dateStr === todayStr;
 
-              // Items for this cell
-              const dayEvents = calendarEvents.filter(e => e.date === dateStr);
-              const dayJournal = journalEntries.find(j => j.date === dateStr);
-              const hasRoutines = routines.length > 0;
+                  // Items for this cell
+                  const dayEvents = calendarEvents.filter(e => e.date === dateStr);
+                  const dayJournal = journalEntries.find(j => j.date === dateStr);
 
-              return (
-                <div
-                  key={dateStr}
-                  onClick={() => setSelectedDateStr(dateStr)}
-                  className={`h-20 sm:h-24 p-1 sm:p-2 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all min-w-0 overflow-hidden ${
-                    isSelected ? 'ring-2' : 'hover:border-stone-400'
-                  }`}
-                  style={{
-                    backgroundColor: isSelected ? themeConfig.accentSubtle : themeConfig.bgMain,
-                    borderColor: isToday ? themeConfig.accent : themeConfig.border,
-                    ringColor: themeConfig.accent,
-                  }}
-                >
-                  <div className="flex items-center justify-between min-w-0">
-                    <span 
-                      className={`text-[11px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full shrink-0 ${
-                        isToday ? 'bg-amber-500 text-white shadow-xs' : ''
+                  return (
+                    <div
+                      key={dateStr}
+                      onClick={() => setSelectedDateStr(dateStr)}
+                      className={`h-20 sm:h-24 p-1 sm:p-2 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all min-w-0 overflow-hidden ${
+                        isSelected ? 'ring-2' : 'hover:border-stone-400'
                       }`}
-                      style={{ color: isToday ? '#ffffff' : themeConfig.textPrimary }}
+                      style={{
+                        backgroundColor: isSelected ? themeConfig.accentSubtle : themeConfig.bgMain,
+                        borderColor: isToday ? themeConfig.accent : themeConfig.border,
+                        ringColor: themeConfig.accent,
+                      }}
                     >
-                      {dayNum}
-                    </span>
-
-                    <div className="flex items-center gap-1">
-                      {dayJournal && (
+                      <div className="flex items-center justify-between min-w-0">
                         <span 
-                          title={`Journal: ${dayJournal.mood?.label || 'Reflected'}`}
-                          className="text-[10px] sm:text-xs leading-none shrink-0"
+                          className={`text-[11px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full shrink-0 ${
+                            isToday ? 'bg-amber-500 text-white shadow-xs' : ''
+                          }`}
+                          style={{ color: isToday ? '#ffffff' : themeConfig.textPrimary }}
                         >
-                          {dayJournal.mood?.emoji || '📖'}
+                          {dayNum}
                         </span>
-                      )}
-                      {dayEvents.length > 0 && (
-                        <span className="text-[9px] sm:text-[10px] font-bold px-1 sm:px-1.5 rounded-full bg-black/10 dark:bg-white/10 shrink-0" style={{ color: themeConfig.textSecondary }}>
-                          {dayEvents.length}
-                        </span>
-                      )}
-                    </div>
-                  </div>
 
-                  {/* Badges / dots in day cell */}
-                  <div className="space-y-1 overflow-hidden min-w-0">
-                    {dayJournal && (
-                      <div 
+                        <div className="flex items-center gap-1">
+                          {dayJournal && (
+                            <span 
+                              title={`Journal: ${dayJournal.mood?.label || 'Reflected'}`}
+                              className="text-[10px] sm:text-xs leading-none shrink-0"
+                            >
+                              {dayJournal.mood?.emoji || '📖'}
+                            </span>
+                          )}
+                          {dayEvents.length > 0 && (
+                            <span className="text-[9px] sm:text-[10px] font-bold px-1 sm:px-1.5 rounded-full bg-black/10 dark:bg-white/10 shrink-0" style={{ color: themeConfig.textSecondary }}>
+                              {dayEvents.length}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Badges / dots in day cell */}
+                      <div className="space-y-1 overflow-hidden min-w-0">
+                        {dayJournal && (
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openJournalForDate(dateStr);
+                            }}
+                            className="text-[9px] sm:text-[10px] truncate px-1 py-0.5 rounded flex items-center gap-1 opacity-90 min-w-0 font-medium hover:opacity-100 cursor-pointer"
+                            style={{ backgroundColor: `${themeConfig.accent}25`, color: themeConfig.textPrimary }}
+                            title="Click to view journal reflection"
+                          >
+                            <span className="shrink-0">{dayJournal.mood?.emoji || '📖'}</span>
+                            <span className="truncate min-w-0">{dayJournal.title || 'Journal'}</span>
+                          </div>
+                        )}
+                        {dayEvents.slice(0, dayJournal ? 1 : 2).map(evt => (
+                          <div 
+                            key={evt.id}
+                            className="text-[9px] sm:text-[10px] truncate px-1 rounded flex items-center gap-1 opacity-90 min-w-0"
+                            style={{ backgroundColor: `${evt.color || themeConfig.accent}25`, color: themeConfig.textPrimary }}
+                          >
+                            <span className="shrink-0">{evt.emoji}</span>
+                            <span className="truncate min-w-0">{evt.title}</span>
+                          </div>
+                        ))}
+                        {dayEvents.length > (dayJournal ? 1 : 2) && (
+                          <span className="text-[8px] sm:text-[9px] block text-right font-medium truncate" style={{ color: themeConfig.textMuted }}>
+                            +{dayEvents.length - (dayJournal ? 1 : 2)} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {viewMode === 'week' && (
+            <div className="space-y-3">
+              {/* Week days grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-7 gap-1.5 sm:gap-2 min-w-0">
+                {weekDays.map((d) => {
+                  const dateStr = formatDateLocal(d);
+                  const isSelected = dateStr === selectedDateStr;
+                  const isToday = dateStr === todayStr;
+                  const dayEvents = calendarEvents.filter(e => e.date === dateStr);
+                  const dayJournal = journalEntries.find(j => j.date === dateStr);
+                  const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+                  const dayNumber = d.getDate();
+
+                  return (
+                    <div
+                      key={dateStr}
+                      onClick={() => setSelectedDateStr(dateStr)}
+                      className={`min-h-[220px] sm:min-h-[280px] p-2 rounded-2xl border flex flex-col justify-between cursor-pointer transition-all min-w-0 overflow-hidden ${
+                        isSelected ? 'ring-2' : 'hover:border-stone-400'
+                      }`}
+                      style={{
+                        backgroundColor: isSelected ? themeConfig.accentSubtle : themeConfig.bgMain,
+                        borderColor: isToday ? themeConfig.accent : themeConfig.border,
+                        ringColor: themeConfig.accent,
+                      }}
+                    >
+                      <div>
+                        {/* Day Header */}
+                        <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b" style={{ borderColor: themeConfig.border }}>
+                          <span className="text-[10px] sm:text-xs font-bold uppercase truncate" style={{ color: themeConfig.textMuted }}>
+                            {dayName}
+                          </span>
+                          <span 
+                            className={`text-[11px] sm:text-xs font-bold w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full shrink-0 ${
+                              isToday ? 'bg-amber-500 text-white shadow-xs' : ''
+                            }`}
+                            style={{ color: isToday ? '#ffffff' : themeConfig.textPrimary }}
+                          >
+                            {dayNumber}
+                          </span>
+                        </div>
+
+                        {/* Journal Reflection if present */}
+                        {dayJournal && (
+                          <div 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openJournalForDate(dateStr);
+                            }}
+                            className="mb-1.5 text-[9px] sm:text-[10px] truncate p-1 rounded-lg flex items-center gap-1 font-medium cursor-pointer hover:opacity-100"
+                            style={{ backgroundColor: `${themeConfig.accent}25`, color: themeConfig.textPrimary }}
+                            title="View reflection"
+                          >
+                            <span className="shrink-0">{dayJournal.mood?.emoji || '📖'}</span>
+                            <span className="truncate">{dayJournal.title || 'Reflected'}</span>
+                          </div>
+                        )}
+
+                        {/* Events list for this day */}
+                        <div className="space-y-1.5 overflow-y-auto max-h-[160px] sm:max-h-[180px] pr-0.5">
+                          {dayEvents.map(evt => (
+                            <div
+                              key={evt.id}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCalendarEvent(evt.id);
+                              }}
+                              className={`p-1.5 rounded-xl border text-[10px] sm:text-[11px] transition-all flex flex-col gap-0.5 cursor-pointer ${
+                                evt.completed ? 'opacity-60 line-through' : ''
+                              }`}
+                              style={{
+                                backgroundColor: themeConfig.bgCard,
+                                borderColor: themeConfig.border,
+                              }}
+                              title={`${evt.title} - Click to toggle completion`}
+                            >
+                              <div className="flex items-center justify-between gap-1">
+                                <span className="text-xs shrink-0">{evt.emoji}</span>
+                                <div 
+                                  className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border shrink-0 ${
+                                    evt.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300'
+                                  }`}
+                                >
+                                  {evt.completed && <Check className="w-2.5 h-2.5 stroke-[3]" />}
+                                </div>
+                              </div>
+                              <span className="font-semibold truncate" style={{ color: themeConfig.textPrimary }}>
+                                {evt.title}
+                              </span>
+                              {evt.time && (
+                                <span className="text-[9px] flex items-center gap-0.5" style={{ color: themeConfig.textMuted }}>
+                                  <Clock className="w-2.5 h-2.5" />
+                                  <span>{evt.time}</span>
+                                </span>
+                              )}
+                            </div>
+                          ))}
+
+                          {dayEvents.length === 0 && !dayJournal && (
+                            <span className="text-[10px] block py-3 text-center italic" style={{ color: themeConfig.textMuted }}>
+                              No items
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Quick Add for this day */}
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          openJournalForDate(dateStr);
+                          setSelectedDateStr(dateStr);
+                          setIsEventModalOpen(true);
                         }}
-                        className="text-[9px] sm:text-[10px] truncate px-1 py-0.5 rounded flex items-center gap-1 opacity-90 min-w-0 font-medium hover:opacity-100 cursor-pointer"
-                        style={{ backgroundColor: `${themeConfig.accent}25`, color: themeConfig.textPrimary }}
-                        title="Click to view journal reflection"
+                        className="mt-2 w-full py-1 text-[10px] font-semibold rounded-lg hover:bg-black/5 dark:hover:bg-white/5 flex items-center justify-center gap-1 opacity-70 hover:opacity-100 transition-opacity"
+                        style={{ color: themeConfig.accent }}
                       >
-                        <span className="shrink-0">{dayJournal.mood?.emoji || '📖'}</span>
-                        <span className="truncate min-w-0">{dayJournal.title || 'Journal'}</span>
-                      </div>
-                    )}
-                    {dayEvents.slice(0, dayJournal ? 1 : 2).map(evt => (
-                      <div 
-                        key={evt.id}
-                        className="text-[9px] sm:text-[10px] truncate px-1 rounded flex items-center gap-1 opacity-90 min-w-0"
-                        style={{ backgroundColor: `${evt.color || themeConfig.accent}25`, color: themeConfig.textPrimary }}
-                      >
-                        <span className="shrink-0">{evt.emoji}</span>
-                        <span className="truncate min-w-0">{evt.title}</span>
-                      </div>
-                    ))}
-                    {dayEvents.length > (dayJournal ? 1 : 2) && (
-                      <span className="text-[8px] sm:text-[9px] block text-right font-medium truncate" style={{ color: themeConfig.textMuted }}>
-                        +{dayEvents.length - (dayJournal ? 1 : 2)} more
+                        <Plus className="w-3 h-3" />
+                        <span>Add</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {viewMode === 'day' && (
+            <div className="space-y-4">
+              {/* Day Header Banner */}
+              <div 
+                className="p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                style={{ backgroundColor: themeConfig.bgMain, borderColor: themeConfig.border }}
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold uppercase tracking-wider" style={{ color: themeConfig.accent }}>
+                      Day Schedule
+                    </span>
+                    {selectedDateStr === todayStr && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500 text-white">
+                        Today
                       </span>
                     )}
                   </div>
+                  <h3 className="text-lg sm:text-xl font-extrabold mt-0.5" style={{ color: themeConfig.textPrimary }}>
+                    {new Date(selectedDateStr + 'T00:00:00').toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      month: 'long',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </h3>
                 </div>
-              );
-            })}
-          </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsEventModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white shadow-xs hover:opacity-90 active:scale-95 transition-all self-start sm:self-auto cursor-pointer shrink-0"
+                  style={{ backgroundColor: themeConfig.accent }}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Task / Event</span>
+                </button>
+              </div>
+
+              {/* Scheduled items list */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: themeConfig.textSecondary }}>
+                    Scheduled Items ({eventsForSelectedDay.length})
+                  </h4>
+                  <span className="text-xs" style={{ color: themeConfig.textMuted }}>
+                    {eventsForSelectedDay.filter(e => e.completed).length} of {eventsForSelectedDay.length} completed
+                  </span>
+                </div>
+
+                {eventsForSelectedDay.length > 0 ? (
+                  <div className="space-y-2">
+                    {eventsForSelectedDay.map(evt => (
+                      <div
+                        key={evt.id}
+                        onClick={() => toggleCalendarEvent(evt.id)}
+                        className="p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer hover:shadow-xs transition-all"
+                        style={{
+                          backgroundColor: themeConfig.bgMain,
+                          borderColor: themeConfig.border,
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{evt.emoji}</span>
+                          <div>
+                            <p className={`text-sm font-bold ${evt.completed ? 'line-through opacity-60' : ''}`} style={{ color: themeConfig.textPrimary }}>
+                              {evt.title}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {evt.time && (
+                                <span className="text-xs flex items-center gap-1" style={{ color: themeConfig.textMuted }}>
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span>{evt.time}</span>
+                                </span>
+                              )}
+                              <span 
+                                className="text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider capitalize"
+                                style={{ backgroundColor: `${evt.color || themeConfig.accent}20`, color: evt.color || themeConfig.accent }}
+                              >
+                                {evt.type}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteCalendarEvent(evt.id);
+                            }}
+                            className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg cursor-pointer transition-colors"
+                            title="Delete event"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <div 
+                            className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all ${
+                              evt.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-gray-300 hover:border-gray-400'
+                            }`}
+                          >
+                            {evt.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center rounded-2xl border text-xs" style={{ backgroundColor: themeConfig.bgMain, borderColor: themeConfig.border }}>
+                    <CalendarIcon className="w-8 h-8 mx-auto mb-2 opacity-30" style={{ color: themeConfig.textMuted }} />
+                    <p className="font-semibold" style={{ color: themeConfig.textPrimary }}>No events scheduled for this day</p>
+                    <p className="mt-1" style={{ color: themeConfig.textMuted }}>Take a breath or schedule a gentle task whenever you are ready.</p>
+                    <button
+                      type="button"
+                      onClick={() => setIsEventModalOpen(true)}
+                      className="mt-3 px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-xs hover:opacity-90 inline-flex items-center gap-1.5 cursor-pointer"
+                      style={{ backgroundColor: themeConfig.accent }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Schedule Task</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Daily Reflection Journal Entry for this day */}
+              <div className="pt-2 border-t" style={{ borderColor: themeConfig.border }}>
+                <h4 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: themeConfig.textSecondary }}>
+                  Daily Reflection
+                </h4>
+                {(() => {
+                  const dayJournal = journalEntries.find(j => j.date === selectedDateStr);
+                  if (dayJournal) {
+                    return (
+                      <div 
+                        onClick={() => openJournalForDate(selectedDateStr)}
+                        className="p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer hover:shadow-xs transition-all"
+                        style={{ backgroundColor: themeConfig.bgMain, borderColor: themeConfig.border }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{dayJournal.mood?.emoji || '📖'}</span>
+                          <div>
+                            <p className="text-xs font-bold" style={{ color: themeConfig.textPrimary }}>
+                              {dayJournal.title || 'Daily Reflection'}
+                            </p>
+                            <p className="text-[11px] line-clamp-1 mt-0.5" style={{ color: themeConfig.textMuted }}>
+                              {dayJournal.content || 'Completed reflection'}
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs font-semibold hover:underline" style={{ color: themeConfig.accent }}>
+                          Read
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div 
+                      className="p-3 rounded-2xl border flex items-center justify-between text-xs"
+                      style={{ backgroundColor: themeConfig.bgMain, borderColor: themeConfig.border }}
+                    >
+                      <span style={{ color: themeConfig.textMuted }}>No reflection written yet for this day.</span>
+                      <button
+                        type="button"
+                        onClick={() => openJournalForDate(selectedDateStr)}
+                        className="font-semibold hover:underline"
+                        style={{ color: themeConfig.accent }}
+                      >
+                        + Write Reflection
+                      </button>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Recurring Daily Routines */}
+              <div className="pt-2 border-t space-y-2" style={{ borderColor: themeConfig.border }}>
+                <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: themeConfig.textSecondary }}>
+                  Daily Routines Available
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {routines.map(r => (
+                    <div 
+                      key={r.id}
+                      className="p-3 rounded-xl border flex items-center justify-between text-xs"
+                      style={{ backgroundColor: themeConfig.bgMain, borderColor: themeConfig.border }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{r.emoji}</span>
+                        <div>
+                          <p className="font-bold" style={{ color: themeConfig.textPrimary }}>{r.name}</p>
+                          <p className="text-[10px]" style={{ color: themeConfig.textMuted }}>
+                            {r.activities.length} steps • ~{r.estimatedDuration}m
+                          </p>
+                        </div>
+                      </div>
+                      <span 
+                        className="text-[10px] font-semibold px-2 py-0.5 rounded-md"
+                        style={{ backgroundColor: `${r.color || themeConfig.accent}20`, color: r.color || themeConfig.accent }}
+                      >
+                        {r.activities.filter(a => a.completed).length}/{r.activities.length}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Selected Day Agenda Detail */}

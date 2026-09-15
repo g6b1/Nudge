@@ -6,6 +6,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { Routine, Checklist, Backpack, CalendarEvent } from '../types';
 import { getTodayDateString } from '../utils/storage';
+import { MOTIVATIONAL_TIPS } from '../data/motivationalTips';
 
 export const TodayDashboard: React.FC = () => {
   const { 
@@ -19,6 +20,10 @@ export const TodayDashboard: React.FC = () => {
   } = useApp();
 
   const [quickBrainDumpText, setQuickBrainDumpText] = useState('');
+  const [currentMotivationalTip] = useState<string>(() => {
+    const randomIndex = Math.floor(Math.random() * MOTIVATIONAL_TIPS.length);
+    return MOTIVATIONAL_TIPS[randomIndex];
+  });
 
   // Time-appropriate greeting
   const getGreeting = () => {
@@ -164,10 +169,10 @@ export const TodayDashboard: React.FC = () => {
                 color: themeConfig.textPrimary,
                 backgroundColor: themeConfig.bgMain,
               }}
-              title="Overcome procrastination with a gentle 5-second countdown"
+              title={`Overcome procrastination with a gentle ${(settings.countdownDuration ?? settings.defaultCountdownDuration) || 10}-second countdown`}
             >
               <span className="shrink-0">⏱️</span>
-              <span>5-Sec Start</span>
+              <span>{`${(settings.countdownDuration ?? settings.defaultCountdownDuration) || 10}-Sec Start`}</span>
             </button>
 
             {/* Plan Tomorrow & Copy Day Tools */}
@@ -205,50 +210,67 @@ export const TodayDashboard: React.FC = () => {
 
         {/* Daily Goal & Streak Progress strip */}
         <div 
-          className="mt-6 pt-5 border-t flex flex-wrap items-center justify-between gap-4 text-xs"
+          className="mt-6 pt-5 border-t space-y-3.5 text-xs"
           style={{ borderColor: themeConfig.border }}
         >
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
-            {/* Daily Progress */}
-            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-              <div className="w-16 bg-black/10 dark:bg-white/10 h-2 rounded-full overflow-hidden shrink-0">
-                <div 
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{ width: `${dailyPercentage}%`, backgroundColor: themeConfig.accent }}
-                />
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 min-w-0">
+              {/* Daily Progress */}
+              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                <div className="w-16 bg-black/10 dark:bg-white/10 h-2 rounded-full overflow-hidden shrink-0">
+                  <div 
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${dailyPercentage}%`, backgroundColor: themeConfig.accent }}
+                  />
+                </div>
+                <span className="font-bold whitespace-nowrap" style={{ color: themeConfig.textPrimary }}>
+                  {dailyPercentage}% complete today
+                </span>
+                <span className="whitespace-nowrap" style={{ color: themeConfig.textMuted }}>
+                  ({completedTasks}/{totalTasks} nudges)
+                </span>
               </div>
-              <span className="font-bold whitespace-nowrap" style={{ color: themeConfig.textPrimary }}>
-                {dailyPercentage}% complete today
-              </span>
-              <span className="whitespace-nowrap" style={{ color: themeConfig.textMuted }}>
-                ({completedTasks}/{totalTasks} nudges)
-              </span>
-            </div>
 
-            {/* Streak indicator */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 font-semibold shrink-0">
-              <Flame className="w-3.5 h-3.5 text-amber-500 fill-current" />
-              <span>{streak.currentStreak} Day Streak</span>
-            </div>
-
-            {/* Recovery badge if user returned after a break */}
-            {streak.recoveryDaysCount > 0 && (
-              <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium shrink-0">
-                <span>🌱 Returned & Rebuilding ({streak.recoveryDaysCount}x)</span>
+              {/* Streak indicator */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 font-semibold shrink-0">
+                <Flame className="w-3.5 h-3.5 text-amber-500 fill-current" />
+                <span>{streak.currentStreak} Day Streak</span>
               </div>
-            )}
+
+              {/* Recovery badge if user returned after a break */}
+              {streak.recoveryDaysCount > 0 && (
+                <div className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-medium shrink-0">
+                  <span>🌱 Returned & Rebuilding ({streak.recoveryDaysCount}x)</span>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 text-xs">
-            <span style={{ color: themeConfig.textMuted }}>Mode:</span>
-            <button
-              onClick={toggleLowEnergyMode}
-              className="font-medium hover:underline flex items-center gap-1 cursor-pointer"
-              style={{ color: isLowEnergy ? '#15803d' : themeConfig.accent }}
-            >
-              {isLowEnergy ? <Feather className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
-              <span>{isLowEnergy ? 'Low Energy Active' : 'Normal Pace'}</span>
-            </button>
+          {/* Rotating Motivational Tip: Under the percentage-completion text, above the mode displayer */}
+          <div 
+            id="home-motivational-tip" 
+            className="flex items-start gap-1.5 text-xs py-0.5"
+            style={{ color: themeConfig.textSecondary }}
+          >
+            <span className="shrink-0 text-xs select-none">💡</span>
+            <p className="italic leading-relaxed">
+              {currentMotivationalTip}
+            </p>
+          </div>
+
+          {/* Mode Displayer */}
+          <div className="flex items-center justify-between sm:justify-end gap-2 text-xs pt-0.5">
+            <div className="flex items-center gap-2">
+              <span style={{ color: themeConfig.textMuted }}>Mode:</span>
+              <button
+                onClick={toggleLowEnergyMode}
+                className="font-medium hover:underline flex items-center gap-1 cursor-pointer"
+                style={{ color: isLowEnergy ? '#15803d' : themeConfig.accent }}
+              >
+                {isLowEnergy ? <Feather className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+                <span>{isLowEnergy ? 'Low Energy Active' : 'Normal Pace'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -396,9 +396,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveTab('journal');
   }, []);
 
-  // Launch Mental Countdown (5-Second Start)
+  // Launch Mental Countdown (Just Start)
   const launchMentalCountdown = useCallback((title: string, onComplete: () => void, emoji?: string) => {
-    if (settings.countdownDuration === 0) {
+    const duration = settings.countdownDuration ?? settings.defaultCountdownDuration ?? 10;
+    if (duration === 0) {
       // Instant
       onComplete();
       return;
@@ -406,13 +407,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCountdownData({
       title,
       emoji: emoji || '⏱️',
-      durationSeconds: settings.countdownDuration,
+      durationSeconds: duration,
       onComplete: () => {
         setCountdownData(null);
         onComplete();
       },
     });
-  }, [settings.countdownDuration]);
+  }, [settings.countdownDuration, settings.defaultCountdownDuration]);
 
   // Guided Routine setter
   const setGuidedRoutine = useCallback((routine: Routine | null, isLowEnergy: boolean = false) => {

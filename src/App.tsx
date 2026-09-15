@@ -29,9 +29,31 @@ import { PlanTomorrowModal } from './components/PlanTomorrowModal';
 import { CopyDayModal } from './components/CopyDayModal';
 import { QRScannerModal } from './components/QRScannerModal';
 import { ToastContainer } from './components/ToastContainer';
+import { SplashScreen } from './components/SplashScreen';
+import { TutorialModal } from './components/TutorialModal';
+import { storage } from './utils/storage';
 
 const MainAppLayout: React.FC = () => {
   const { activeTab, themeConfig, settings } = useApp();
+
+  // Animated Splash Screen (shown on every app launch)
+  const [showSplash, setShowSplash] = React.useState(true);
+
+  // First-Time User Tutorial (only shown after splash for users who have never completed/skipped it)
+  const [showTutorial, setShowTutorial] = React.useState(false);
+
+  const handleSplashFinish = React.useCallback(() => {
+    setShowSplash(false);
+    // Check if new user who hasn't completed or skipped tutorial
+    if (!storage.isTutorialCompleted()) {
+      setShowTutorial(true);
+    }
+  }, []);
+
+  const handleTutorialCompleteOrSkip = React.useCallback(() => {
+    storage.markTutorialCompleted();
+    setShowTutorial(false);
+  }, []);
 
   const fontSizeClass = 
     settings.fontSize === 'small' ? 'text-xs' : 
@@ -46,6 +68,16 @@ const MainAppLayout: React.FC = () => {
         color: themeConfig.textPrimary,
       }}
     >
+      {/* Animated Splash Screen - Shown on launch */}
+      {showSplash && <SplashScreen onFinish={handleSplashFinish} />}
+
+      {/* First-Time User Tutorial - Shown after splash for new users */}
+      {!showSplash && showTutorial && (
+        <TutorialModal 
+          onComplete={handleTutorialCompleteOrSkip} 
+          onSkip={handleTutorialCompleteOrSkip} 
+        />
+      )}
       {/* Navigation Top Bar & Tabs */}
       <Navigation />
 

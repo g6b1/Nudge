@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.5"
+        android:scaleY="0.5"
+        android:translateX="27"
+        android:translateY="27">
+        <!-- Sprout / Sparkle icon representing gentle nudge -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M54,12 C44,30 24,38 24,60 C24,76.57 37.43,90 54,90 C70.57,90 84,76.57 84,60 C84,38 64,30 54,12 Z M54,78 C44.06,78 36,69.94 36,60 C36,46 50,38 54,26 C58,38 72,46 72,60 C72,69.94 63.94,78 54,78 Z" />
+    </group>
+</vector>

@@ -6,14 +6,14 @@ import { sounds } from '../utils/audio';
 
 export const MentalCountdownModal: React.FC = () => {
   const { countdownData, setCountdownData, settings, themeConfig } = useApp();
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(5);
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(10);
   const [soundMuted, setSoundMuted] = useState(false);
 
   useEffect(() => {
     if (!countdownData) return;
-    const initial = countdownData.durationSeconds || settings.countdownDuration || 5;
+    const initial = countdownData.durationSeconds || settings.countdownDuration || settings.defaultCountdownDuration || 10;
     setSecondsRemaining(initial);
-  }, [countdownData, settings.countdownDuration]);
+  }, [countdownData, settings.countdownDuration, settings.defaultCountdownDuration]);
 
   useEffect(() => {
     if (!countdownData) return;

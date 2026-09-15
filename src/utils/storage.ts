@@ -315,30 +315,24 @@ export const storage = {
     }
   },
 
-  // Tutorial state
+  // Dedicated Tutorial Status
   isTutorialCompleted: (): boolean => {
     try {
       const val = localStorage.getItem(STORAGE_KEYS.TUTORIAL_COMPLETED);
-      if (val !== null) {
-        return val === 'true';
-      }
-      // If user already has any existing app data saved (settings, routines, checklists, etc.),
-      // treat them as an existing user so we do not force them through the tutorial unexpectedly.
-      const hasExistingData = 
-        localStorage.getItem(STORAGE_KEYS.SETTINGS) !== null ||
-        localStorage.getItem(STORAGE_KEYS.ROUTINES) !== null ||
-        localStorage.getItem(STORAGE_KEYS.CALENDAR) !== null ||
-        localStorage.getItem(STORAGE_KEYS.JOURNAL) !== null;
-
-      if (hasExistingData) {
-        // Mark as completed for existing users so they never see it
-        localStorage.setItem(STORAGE_KEYS.TUTORIAL_COMPLETED, 'true');
-        return true;
-      }
-
-      return false;
+      // Exactly two meaningful states:
+      // If the parameter exists and is 'true', return true.
+      // If it is 'false' or does not exist yet (null), return false.
+      return val === 'true';
     } catch {
-      return true; // Fallback safely if localStorage is restricted
+      return false;
+    }
+  },
+
+  setTutorialCompleted: (completed: boolean) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.TUTORIAL_COMPLETED, completed ? 'true' : 'false');
+    } catch {
+      // ignore
     }
   },
 
